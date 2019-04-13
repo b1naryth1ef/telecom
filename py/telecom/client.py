@@ -1,4 +1,4 @@
-from telecom import telecom as native
+from . import telecom as native
 
 
 class TelecomClient(object):

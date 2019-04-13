@@ -54,6 +54,7 @@ static PyMethodDef TelecomMethods[] = {
   {NULL, NULL, 0, NULL}
 };
 
+#if PY_MAJOR_VERSION >= 3
 static struct PyModuleDef telecommodule = {
   PyModuleDef_HEAD_INIT, "telecom", NULL, -1, TelecomMethods
 };
@@ -61,3 +62,8 @@ static struct PyModuleDef telecommodule = {
 PyMODINIT_FUNC PyInit_telecom() {
   return PyModule_Create(&telecommodule);
 }
+#else
+PyMODINIT_FUNC inittelecom() {
+  Py_InitModule("telecom", TelecomMethods);
+}
+#endif
