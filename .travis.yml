@@ -1,0 +1,41 @@
+sudo: false
+language: python
+dist: trusty
+
+
+matrix:
+  - dist: trusty
+    sudo: required
+    services:
+      - docker
+    env: TELECOM_PY_BUILDWHEELS=1
+  - os: osx
+    osx_image: xcode9.4
+    language: generic
+    env: TELECOM_PY_BUILDWHEELS=1
+    python: "3.6"
+    before_install:
+      - SSL_CERT_FILE=$(brew --prefix)/etc/openssl/cert.pem
+      - sudo pip install -U pip setuptools twine
+
+branches:
+  only:
+    - master
+
+install:
+  - |
+    if [ -n "${TELECOM_PY_BUILDWHEELS:-}" ]; then
+      pip install cibuildwheel
+    else
+      python setup.py build
+    fi
+
+script:
+  - |
+    if [ -n "${TELECOM_PY_BUILDWHEELS:-}" ]; then
+      cibuildwheel --output-dir dist
+    else
+      python test.py
+    fi
+
+before_deploy: ls dist/
