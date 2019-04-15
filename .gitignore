@@ -3,4 +3,6 @@
 /cmd/telecom-native/telecom.h
 /telecom-client
 /py/build
+/py/dist
+/py/telecom_py.egg-info/
 *.mp3

@@ -32,7 +32,9 @@ func main() {
 	}
 
 	<-client.Ready
-	telecom.PlayAudioFile(client, "yeet.mp3")
+
+	playable := telecom.NewAvConvPlayable("yeet.mp3")
+	client.Play(playable)
 
 	for {
 		time.Sleep(1)

@@ -3,7 +3,6 @@ package telecom
 import (
 	"encoding/binary"
 	"encoding/json"
-	"log"
 	"net"
 	"strconv"
 	"strings"
@@ -11,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/nacl/secretbox"
 )
 
@@ -45,15 +45,15 @@ type VoiceHandshakeData struct {
 	Token     string `json:"token"`
 }
 
-type SelectProtocolData struct {
-	Address string `json:"address"` // Public IP of machine running this code
-	Port    uint16 `json:"port"`    // UDP Port of machine running this code
-	Mode    string `json:"mode"`    // always "xsalsa20_poly1305"
+type GatewayMessageSelectProtocol struct {
+	Protocol string                           `json:"protocol"`
+	Data     GatewayMessageSelectProtocolData `json:"data"`
 }
 
-type GatewayMessageSelectProtocol struct {
-	Protocol string             `json:"protocol"` // Always "udp" ?
-	Data     SelectProtocolData `json:"data"`
+type GatewayMessageSelectProtocolData struct {
+	Address string `json:"address"`
+	Port    uint16 `json:"port"`
+	Mode    string `json:"mode"`
 }
 
 type VoiceOp struct {
@@ -67,14 +67,16 @@ type ServerInfo struct {
 }
 
 type Client struct {
-	UserId        string
-	GuildId       string
-	AudioSendChan chan []byte
-	Ready         chan bool
+	UserId  string
+	GuildId string
+	Ready   chan bool
 
-	endpoint  string
-	sessionId string
-	secretKey [32]byte
+	playableQueue chan Playable
+	playable      Playable
+	closer        chan struct{}
+	endpoint      string
+	sessionId     string
+	secretKey     [32]byte
 
 	serverInfoChan chan ServerInfo
 
@@ -85,11 +87,10 @@ type Client struct {
 
 func NewClient(userId, guildId, sessionId string) *Client {
 	return &Client{
-		UserId:  userId,
-		GuildId: guildId,
-		Ready:   make(chan bool, 0),
-		// Jitter buffer
-		AudioSendChan:  make(chan []byte, 128),
+		UserId:         userId,
+		GuildId:        guildId,
+		Ready:          make(chan bool, 0),
+		playableQueue:  make(chan Playable, 0),
 		sessionId:      sessionId,
 		serverInfoChan: make(chan ServerInfo, 0),
 	}
@@ -97,6 +98,10 @@ func NewClient(userId, guildId, sessionId string) *Client {
 
 // Starts the clients internal goroutines
 func (c *Client) Run() {
+	if c.closer != nil {
+		return
+	}
+
 	go c.runForever()
 }
 
@@ -112,7 +117,7 @@ func (c *Client) SetSpeaking(speaking bool) {
 	err := c.ws.WriteJSON(data)
 	c.wsLock.Unlock()
 	if err != nil {
-		log.Printf("Error setting speaking: %v")
+		log.WithError(err).Errorf("Failed to set speaking to %v", speaking)
 	}
 }
 
@@ -124,17 +129,39 @@ func (c *Client) WaitReady() {
 	<-c.Ready
 }
 
-func (c *Client) runForever() {
-	for {
-		info := <-c.serverInfoChan
-		c.endpoint = info.Endpoint
+func (c *Client) Close() {
+	if c.closer != nil {
+		close(c.closer)
+		c.closer = nil
+	}
+}
 
-		if c.ws != nil {
-			panic("Would have had to close the existing connection TODO")
+func (c *Client) Play(p Playable) {
+	c.playableQueue <- p
+}
+
+func (c *Client) runForever() {
+	var info ServerInfo
+
+	c.closer = make(chan struct{}, 0)
+
+	for {
+		select {
+		case info = <-c.serverInfoChan:
+			c.endpoint = info.Endpoint
+			if c.ws != nil {
+				log.Debug("Tearing down existing connection, endpoint has moved")
+				c.ws.Close()
+			}
+		case <-c.closer:
+			log.Info("Tearing down client due to upstream close request")
+			if c.ws != nil {
+				c.ws.Close()
+			}
+			return
 		}
 
 		var err error
-
 		c.ws, _, err = websocket.DefaultDialer.Dial("wss://"+strings.TrimSuffix(info.Endpoint, ":80"), nil)
 		if err != nil {
 			panic(err)
@@ -151,21 +178,59 @@ func (c *Client) runForever() {
 }
 
 func (c *Client) runWebsocket() {
+	var message GatewayMessage
+	wsCloser := make(chan struct{}, 0)
+
+	log.Debug("Running websocket connection")
+
 	for {
-		_, message, err := c.ws.ReadMessage()
+		_, data, err := c.ws.ReadMessage()
 		if err != nil {
-			log.Printf("runWebsocket terminating due to error on read: %v", err)
+			log.WithError(err).Error("Failed to ReadMessage from websocket, closing child routines")
+			close(wsCloser)
+			if c.udp != nil {
+				c.udp.Close()
+			}
 			return
 		}
 
-		err = c.handleWebsocketMessage(message)
+		err = json.Unmarshal(data, &message)
 		if err != nil {
-			log.Printf("Error processing websocket message: %v (%v)", err, string(message))
+			log.WithError(err).Errorf("Failed to process gateway message: %v", string(data))
+			continue
+		}
+
+		switch message.Op {
+		case 2:
+			var ready GatewayMessageReady
+			err = json.Unmarshal(message.Data, &ready)
+			if err != nil {
+				log.WithError(err).Errorf("Failed to process Ready message: %v", string(message.Data))
+				continue
+			}
+
+			go c.runHeartbeater(wsCloser, ready.HeartbeatInterval)
+			go c.runUDP(wsCloser, ready.Port, ready.SSRC)
+		case 3:
+		case 4:
+			var mode GatewayMessageMode
+			err = json.Unmarshal(message.Data, &mode)
+			if err != nil {
+				log.WithError(err).Errorf("Failed to process Mode message: %v", string(message.Data))
+				continue
+			}
+
+			c.secretKey = mode.SecretKey
+		default:
+			log.WithFields(log.Fields{
+				"op":   message.Op,
+				"data": string(message.Data),
+			}).Warning("Unhandled gateway message")
 		}
 	}
 }
 
-func (c *Client) runHeartbeater(interval time.Duration) {
+func (c *Client) runHeartbeater(closer chan struct{}, interval time.Duration) {
 	var err error
 
 	ticker := time.NewTicker(time.Duration(interval) * time.Millisecond)
@@ -182,12 +247,13 @@ func (c *Client) runHeartbeater(interval time.Duration) {
 
 		select {
 		case <-ticker.C:
-
+		case <-closer:
+			return
 		}
 	}
 }
 
-func (c *Client) runUDP(port int, ssrc uint32) {
+func (c *Client) runUDP(closer chan struct{}, port int, ssrc uint32) {
 	if c.udp != nil {
 		log.Printf("Error: UDP connection already open?")
 		return
@@ -249,7 +315,7 @@ func (c *Client) runUDP(port int, ssrc uint32) {
 	// the UDP connection handshake.
 	data := VoiceOp{1, GatewayMessageSelectProtocol{
 		"udp",
-		SelectProtocolData{
+		GatewayMessageSelectProtocolData{
 			ip, ourPort, "xsalsa20_poly1305",
 		},
 	}}
@@ -262,8 +328,10 @@ func (c *Client) runUDP(port int, ssrc uint32) {
 		return
 	}
 
+	// Closes due to udp being closed
 	go c.runUDPReader()
-	go c.runUDPWriter(ssrc, 48000, 960)
+	go c.runUDPWriter(closer, ssrc, 48000, 960)
+
 	// start udpKeepAlive
 	// go v.udpKeepAlive(v.udpConn, v.close, 5*time.Second)
 
@@ -275,15 +343,15 @@ func (c *Client) runUDPReader() {
 	for {
 		_, err := c.udp.Read(buffer)
 		if err != nil {
-			log.Printf("UDP READ ERROR: %v", err)
-			continue
+			log.WithError(err).Error("Error on UDP read")
+			return
 		}
 
 		// TODO: voice decrypting and processing
 	}
 }
 
-func (c *Client) runUDPWriter(ssrc uint32, rate, size int) {
+func (c *Client) runUDPWriter(closer chan struct{}, ssrc uint32, rate, size int) {
 	var sequence uint16
 	var timestamp uint32
 	var nonce [24]byte
@@ -296,16 +364,38 @@ func (c *Client) runUDPWriter(ssrc uint32, rate, size int) {
 
 	c.SetSpeaking(true)
 	time.Sleep(time.Second * 1)
+	c.SetSpeaking(false)
+	time.Sleep(time.Second * 1)
 	c.SetSpeaking(true)
 
+	log.Debug("Ready to transmit voice data...")
 	close(c.Ready)
 	c.Ready = nil
 
 	// start a send loop that loops until buf chan is closed
 	ticker := time.NewTicker(time.Millisecond * time.Duration(size/(rate/1000)))
 	defer ticker.Stop()
+
+	var err error
+	var recv chan []byte
 	for {
-		recvbuf := <-c.AudioSendChan
+		if c.playable == nil {
+			log.Debug("Waiting for playable")
+			c.playable = <-c.playableQueue
+			recv, err = c.playable.Output()
+			log.Debug("Got new playable")
+			if err != nil {
+				log.WithError(err).Warning("Error opening playable output")
+				continue
+			}
+		}
+
+		recvbuf, ok := <-recv
+		if !ok {
+			log.Warning("Error reading from playable")
+			c.playable = nil
+			continue
+		}
 
 		// Add sequence and timestamp to udpPacket
 		binary.BigEndian.PutUint16(udpHeader[2:], sequence)
@@ -317,10 +407,15 @@ func (c *Client) runUDPWriter(ssrc uint32, rate, size int) {
 
 		// block here until we're exactly at the right time :)
 		// Then send rtp audio packet to Discord over UDP
-		<-ticker.C
+		select {
+		case <-ticker.C:
+		case <-closer:
+			return
+		}
+
 		_, err := c.udp.Write(sendbuf)
 		if err != nil {
-			log.Printf("error writing opus to udp: %v", err)
+			log.WithError(err).Error("UDP write error")
 			return
 		}
 
@@ -336,39 +431,4 @@ func (c *Client) runUDPWriter(ssrc uint32, rate, size int) {
 			timestamp += uint32(size)
 		}
 	}
-}
-
-func (c *Client) handleWebsocketMessage(data []byte) error {
-	var message GatewayMessage
-
-	err := json.Unmarshal(data, &message)
-	if err != nil {
-		return err
-	}
-
-	switch message.Op {
-	case 2:
-		var ready GatewayMessageReady
-		err = json.Unmarshal(message.Data, &ready)
-		if err != nil {
-			return err
-		}
-
-		go c.runHeartbeater(ready.HeartbeatInterval)
-
-		go c.runUDP(ready.Port, ready.SSRC)
-	case 3:
-	case 4:
-		var mode GatewayMessageMode
-		err = json.Unmarshal(message.Data, &mode)
-		if err != nil {
-			return err
-		}
-
-		c.secretKey = mode.SecretKey
-	default:
-		log.Printf("Unhandled gateway op %v: %v", message.Op, string(message.Data))
-	}
-
-	return nil
 }
