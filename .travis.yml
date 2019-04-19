@@ -2,40 +2,41 @@ sudo: false
 language: python
 dist: trusty
 
-
 matrix:
-  - dist: trusty
-    sudo: required
-    services:
-      - docker
-    env: TELECOM_PY_BUILDWHEELS=1
-  - os: osx
-    osx_image: xcode9.4
-    language: generic
-    env: TELECOM_PY_BUILDWHEELS=1
-    python: "3.6"
-    before_install:
-      - SSL_CERT_FILE=$(brew --prefix)/etc/openssl/cert.pem
-      - sudo pip install -U pip setuptools twine
+  include:
+    - dist: trusty
+      sudo: required
+      services:
+        - docker
+      env:
+        - CIBW_BUILD="cp27-manylinux1_x86_64 cp36-manylinux1_x86_64 cp37-manylinux1_x86_64"
 
 branches:
   only:
     - master
+    - ci
 
 install:
-  - |
-    if [ -n "${TELECOM_PY_BUILDWHEELS:-}" ]; then
-      pip install cibuildwheel
-    else
-      python setup.py build
-    fi
+  - pip install cibuildwheel
+  - mkdir .gopath && export GOPATH=$(pwd)/.gopath/
+  - mkdir -p $GOPATH/src/github.com/b1naryth1ef && ln -s $(pwd) $GOPATH/src/github.com/b1naryth1ef/telecom
+  - go get github.com/b1naryth1ef/telecom
+  - cd py && go build -o telecom.so -buildmode=c-shared github.com/b1naryth1ef/telecom/cmd/telecom-native && mv telecom.so libtelecom.so
+
+before_script: ls
 
 script:
   - |
-    if [ -n "${TELECOM_PY_BUILDWHEELS:-}" ]; then
-      cibuildwheel --output-dir dist
-    else
-      python test.py
-    fi
+    CIBW_ENVIRONMENT="LD_LIBRARY_PATH=\"/host/home/travis/build/b1naryth1ef/telecom/py/:$LD_LIBRARY_PATH\"" \
+    cibuildwheel --output-dir dist .
 
 before_deploy: ls dist/
+
+deploy:
+  provider: pypi
+  username: b1naryth1ef
+  password:
+    secure: SAgTYEAbEVnaFmu5BtXXcA9RPv/UektCYfyrwoQdjYomHZFUvvb4fI6hjKf3sx5gR1bZLNQoPTRsPZpff4CICrYaUNopfAsY371oVWftH/tYxy5TyLywN/6rzLsyAZCADyOBm+IeTcbisxQZMq8mRdVHZZReV6rr9cjoZezuFS3IfWzUqXFzWDdPgxwTBKqcJ3Icc5ofa54igYAkWyGX9jAjCm0UVup74+4rmlgcFBEae+2FkEdsi9qbTH6DTHWQeOTU+YF+4md6rABUCud6sW2Ee/j/0H0fmpq7PhKWURN+rpGybm5n91B8nIH8s9kt6aRLaw4rzM8moWgmxooZZ+0wxz+AbxmupG5QappY2nS5CNwEAekLrOM80W4yGk3rQJQESv+iK2MzAfLhNu7D5N7GXSJiejo9XbUSxs2c09328uNXENdGFsGfSRVVW+MFBlzzIzvxmQb+EtJEyra2/wyslAgu3EjZBTe4o3V5qOkLozuyMNuZq/Pv48KAuhQghPs0aLOziKKscl3mfQ5qOfI7I4fnrl2mckRs4sDlVrY6JyfHc/AUw5dTkJy1gMTz+Ok4qP9o35sisf769aQa5kiX1wTdd5n5ofp3skauTlcnAyHRUDAVEqemQOT9GkupLIVtc3Uz2H5IMUxmynhRxLPtKcsr5jHEhf3b4o4VZlo=
+  on:
+    tags: true
+    repo: b1naryth1ef/telecom

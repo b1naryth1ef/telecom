@@ -6,10 +6,10 @@ except ImportError:
 
 telecom_module = Extension(
     'telecom.telecom',
-    include_dirs=['../cmd/telecom-native/'],
     libraries=['telecom'],
-    library_dirs=['../cmd/telecom-native/'],
     sources=['telecom.c'],
+    include_dirs=['.'],
+    library_dirs=['.'],
 )
 
 setup(

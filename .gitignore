@@ -5,4 +5,5 @@
 /py/build
 /py/dist
 /py/telecom_py.egg-info/
+/py/.eggs
 *.mp3
