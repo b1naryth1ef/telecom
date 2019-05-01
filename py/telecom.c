@@ -23,7 +23,7 @@ static PyObject* create_client(PyObject* self, PyObject* args) {
   return PyCapsule_New((void*)handle, NULL, &client_destructor);
 }
 
-static PyObject* client_set_server_info(PyObject* self, PyObject* args) {
+static PyObject* client_update_server_info(PyObject* self, PyObject* args) {
   PyObject* client;
   char* endpoint;
   char* token;
@@ -33,7 +33,7 @@ static PyObject* client_set_server_info(PyObject* self, PyObject* args) {
   }
 
   GoInt handle = (GoInt)PyCapsule_GetPointer(client, NULL);
-  telecom_client_set_server_info(handle, endpoint, token);
+  telecom_client_update_server_info(handle, endpoint, token);
   return Py_BuildValue("");
 }
 
@@ -64,7 +64,7 @@ static PyObject* create_avconv_playable(PyObject* self, PyObject* args) {
 
 static PyMethodDef TelecomMethods[] = {
   {"create_client", create_client, METH_VARARGS, "Create a new telecom client."},
-  {"client_set_server_info", client_set_server_info, METH_VARARGS, "Set telecom client server info."},
+  {"client_update_server_info", client_update_server_info, METH_VARARGS, "Set telecom client server info."},
   {"client_play", client_play, METH_VARARGS, "Play a playable."},
   {"create_avconv_playable", create_avconv_playable, METH_VARARGS, "Create a playable."},
   {NULL, NULL, 0, NULL}

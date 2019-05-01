@@ -50,10 +50,10 @@ func telecom_client_destroy(clientPtr uintptr) {
 	delete(clients, client)
 }
 
-//export telecom_client_set_server_info
-func telecom_client_set_server_info(clientPtr uintptr, endpoint, token *C.char) {
+//export telecom_client_update_server_info
+func telecom_client_update_server_info(clientPtr uintptr, endpoint, token *C.char) {
 	client := (*telecom.Client)(unsafe.Pointer(clientPtr))
-	client.SetServerInfo(C.GoString(endpoint), C.GoString(token))
+	client.UpdateServerInfo(C.GoString(endpoint), C.GoString(token))
 }
 
 //export telecom_client_play

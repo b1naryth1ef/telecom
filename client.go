@@ -106,7 +106,7 @@ func (c *Client) Run() {
 }
 
 // Updates the clients server information
-func (c *Client) SetServerInfo(endpoint, token string) {
+func (c *Client) UpdateServerInfo(endpoint, token string) {
 	c.serverInfoChan <- ServerInfo{endpoint, token}
 }
 
