@@ -18,10 +18,6 @@ branches:
 
 install:
   - pip install cibuildwheel
-  - mkdir .gopath && export GOPATH=$(pwd)/.gopath/
-  - mkdir -p $GOPATH/src/github.com/b1naryth1ef && ln -s $(pwd) $GOPATH/src/github.com/b1naryth1ef/telecom
-  - go get github.com/b1naryth1ef/telecom
-  - cd py && go build -o telecom.so -buildmode=c-shared github.com/b1naryth1ef/telecom/cmd/telecom-native && mv telecom.so libtelecom.so
 
 before_script: ls
 
