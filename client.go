@@ -129,7 +129,7 @@ func (c *Client) WaitReady() {
 	<-c.Ready
 }
 
-func (c *Client) Close() {
+func (c *Client) Disconnect() {
 	if c.closer != nil {
 		close(c.closer)
 		c.closer = nil
@@ -332,7 +332,7 @@ func (c *Client) runUDP(closer chan struct{}, port int, ssrc uint32) {
 	go c.runUDPReader()
 	go c.runUDPWriter(closer, ssrc, 48000, 960)
 
-	// start udpKeepAlive
+	// TODO start udpKeepAlive
 	// go v.udpKeepAlive(v.udpConn, v.close, 5*time.Second)
 
 	return

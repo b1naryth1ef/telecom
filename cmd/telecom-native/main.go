@@ -46,7 +46,7 @@ func telecom_create_client(userId, guildId, sessionId *C.char) uintptr {
 func telecom_client_destroy(clientPtr uintptr) {
 	client := (*telecom.Client)(unsafe.Pointer(clientPtr))
 	// TODO: rename `disconnect`
-	client.Close()
+	client.Disconnect()
 	delete(clients, client)
 }
 
