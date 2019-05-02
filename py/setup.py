@@ -111,7 +111,7 @@ class CustomBuildExt(build_ext):
 
 setup(
     name='telecom-py',
-    version='0.0.1',
+    version='0.0.2',
     author='b1nzy',
     author_email='b1naryth1ef@gmail.com',
     description='Discord voice client',
