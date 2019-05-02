@@ -9,6 +9,9 @@ class TelecomConnection(object):
     def __init__(self, user_id, guild_id, session_id):
         self._handle = native.create_client(str(user_id), str(guild_id), str(session_id))
 
+    def set_event_pipe(self, pipe):
+        native.client_set_event_pipe(self._handle, pipe)
+
     def update_server_info(self, endpoint, token):
         native.client_update_server_info(self._handle, endpoint, token)
 

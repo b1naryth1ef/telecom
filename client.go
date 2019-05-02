@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -69,7 +70,7 @@ type ServerInfo struct {
 type Client struct {
 	UserId  string
 	GuildId string
-	Ready   chan bool
+	Events  *os.File
 
 	playableQueue chan Playable
 	playable      Playable
@@ -89,7 +90,6 @@ func NewClient(userId, guildId, sessionId string) *Client {
 	return &Client{
 		UserId:         userId,
 		GuildId:        guildId,
-		Ready:          make(chan bool, 0),
 		playableQueue:  make(chan Playable, 0),
 		sessionId:      sessionId,
 		serverInfoChan: make(chan ServerInfo, 0),
@@ -121,14 +121,6 @@ func (c *Client) SetSpeaking(speaking bool) {
 	}
 }
 
-// Waits until the client is ready to send voice data
-func (c *Client) WaitReady() {
-	if c.Ready == nil {
-		return
-	}
-	<-c.Ready
-}
-
 func (c *Client) Disconnect() {
 	if c.closer != nil {
 		close(c.closer)
@@ -138,6 +130,24 @@ func (c *Client) Disconnect() {
 
 func (c *Client) Play(p Playable) {
 	c.playableQueue <- p
+}
+
+func (c *Client) dispatchEvent(event string, data map[string]interface{}) error {
+	if c.Events == nil {
+		return nil
+	}
+
+	encodedData, err := json.Marshal(map[string]interface{}{
+		"e": event,
+		"d": data,
+	})
+	if err != nil {
+		return err
+	}
+
+	c.Events.Write(encodedData)
+	c.Events.Write([]byte{'\n'})
+	return nil
 }
 
 func (c *Client) runForever() {
@@ -369,8 +379,7 @@ func (c *Client) runUDPWriter(closer chan struct{}, ssrc uint32, rate, size int)
 	c.SetSpeaking(true)
 
 	log.Debug("Ready to transmit voice data...")
-	close(c.Ready)
-	c.Ready = nil
+	c.dispatchEvent("READY", nil)
 
 	// start a send loop that loops until buf chan is closed
 	ticker := time.NewTicker(time.Millisecond * time.Duration(size/(rate/1000)))
@@ -381,18 +390,28 @@ func (c *Client) runUDPWriter(closer chan struct{}, ssrc uint32, rate, size int)
 	for {
 		if c.playable == nil {
 			log.Debug("Waiting for playable")
+			c.dispatchEvent("WAIT_PLAYABLE", nil)
 			c.playable = <-c.playableQueue
+
+			err = c.playable.Start()
+			if err != nil {
+				log.WithError(err).Warning("Error starting playable")
+				continue
+			}
+
 			recv, err = c.playable.Output()
 			log.Debug("Got new playable")
 			if err != nil {
 				log.WithError(err).Warning("Error opening playable output")
 				continue
 			}
+
+			c.dispatchEvent("PLAYABLE_START", nil)
 		}
 
 		recvbuf, ok := <-recv
 		if !ok {
-			log.Warning("Error reading from playable")
+			log.Warning("Playable was closed")
 			c.playable = nil
 			continue
 		}

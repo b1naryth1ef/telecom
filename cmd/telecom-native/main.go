@@ -65,6 +65,19 @@ func telecom_client_play(clientPtr, playablePtr uintptr) {
 	}()
 }
 
+//export telecom_client_set_event_pipe
+func telecom_client_set_event_pipe(clientPtr, eventPipe uintptr) {
+	client := (*telecom.Client)(unsafe.Pointer(clientPtr))
+
+	file := os.NewFile(eventPipe, "eventPipe")
+	if file == nil {
+		log.Error("Failed to open event pipe")
+		return
+	}
+
+	client.Events = file
+}
+
 //export telecom_create_avconv_playable
 func telecom_create_avconv_playable(source *C.char) uintptr {
 	playable := telecom.NewAvConvPlayable(C.GoString(source))

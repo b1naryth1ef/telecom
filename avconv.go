@@ -14,16 +14,22 @@ import (
 type AvConvPlayable struct {
 	bp     *BasicPlayable
 	closed bool
+	path   string
 }
 
 func NewAvConvPlayable(path string) *AvConvPlayable {
 	playable := &AvConvPlayable{
 		bp:     NewBasicPlayable(),
 		closed: false,
+		path:   path,
 	}
 
-	go playable.runForever(path)
 	return playable
+}
+
+func (av *AvConvPlayable) Start() error {
+	go av.runForever(av.path)
+	return nil
 }
 
 func (av *AvConvPlayable) Output() (chan []byte, error) {

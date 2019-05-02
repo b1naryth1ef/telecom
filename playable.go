@@ -9,6 +9,7 @@ var (
 )
 
 type Playable interface {
+	Start() error
 	Output() (chan []byte, error)
 	Close()
 }
@@ -23,6 +24,10 @@ func NewBasicPlayable() *BasicPlayable {
 		false,
 		make(chan []byte, 0),
 	}
+}
+
+func (bp *BasicPlayable) Start() error {
+	return nil
 }
 
 func (bp *BasicPlayable) Output() (chan []byte, error) {

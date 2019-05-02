@@ -62,10 +62,25 @@ static PyObject* create_avconv_playable(PyObject* self, PyObject* args) {
   return PyCapsule_New((void*)handle, NULL, &playable_destructor);
 }
 
+static PyObject* client_set_event_pipe(PyObject* self, PyObject* args) {
+  PyObject* client;
+  GoInt event_pipe;
+
+  if (!PyArg_ParseTuple(args, "OL", &client, &event_pipe)) {
+    return NULL;
+  }
+
+  GoInt handle = (GoInt)PyCapsule_GetPointer(client, NULL);
+  telecom_client_set_event_pipe(handle, event_pipe);
+
+  return Py_BuildValue("");
+}
+
 static PyMethodDef TelecomMethods[] = {
   {"create_client", create_client, METH_VARARGS, "Create a new telecom client."},
   {"client_update_server_info", client_update_server_info, METH_VARARGS, "Set telecom client server info."},
   {"client_play", client_play, METH_VARARGS, "Play a playable."},
+  {"client_set_event_pipe", client_set_event_pipe, METH_VARARGS, "Set the clients event pipe."},
   {"create_avconv_playable", create_avconv_playable, METH_VARARGS, "Create a playable."},
   {NULL, NULL, 0, NULL}
 };
