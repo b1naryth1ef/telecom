@@ -11,11 +11,6 @@ matrix:
       env:
         - CIBW_BUILD="cp27-manylinux1_x86_64 cp36-manylinux1_x86_64 cp37-manylinux1_x86_64"
 
-branches:
-  only:
-    - master
-    - ci
-
 install:
   - pip install cibuildwheel
   - mkdir .gopath && export GOPATH=$(pwd)/.gopath/
