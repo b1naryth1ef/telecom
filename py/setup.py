@@ -28,7 +28,7 @@ telecom_go_ext = HybridGoExtension(
     go_links={
         'github.com/b1naryth1ef/telecom': os.environ.get('TELECOM_REPO_PATH', '..')
     },
-    shared=bool(int(os.environ.get('TELECOM_BUILD_SHARED'))),
+    shared=bool(int(os.environ.get('TELECOM_BUILD_SHARED', '0'))),
     sources=['telecom.c'],
     libraries=['telecom'],
 )
