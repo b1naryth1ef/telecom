@@ -24,6 +24,7 @@ script:
   - |
     CIBW_ENVIRONMENT="LD_LIBRARY_PATH=\"/host/home/travis/build/b1naryth1ef/telecom/py/:$LD_LIBRARY_PATH\" TELECOM_LIB_PATH=\".\" TELECOM_SKIP_GO=1" \
     cibuildwheel --output-dir dist .
+  - [[ $TRAVIS_TAG ]] && twine upload -u $TWINE_USER -p $TWINE_PASS dist/*
 
 before_deploy: ls dist/
 
