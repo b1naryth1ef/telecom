@@ -12,7 +12,7 @@ matrix:
         - CIBW_BUILD="cp27-manylinux1_x86_64 cp36-manylinux1_x86_64 cp37-manylinux1_x86_64"
 
 install:
-  - pip install cibuildwheel
+  - pip install cibuildwheel twine
   - mkdir .gopath && export GOPATH=$(pwd)/.gopath/
   - mkdir -p $GOPATH/src/github.com/b1naryth1ef && ln -s $(pwd) $GOPATH/src/github.com/b1naryth1ef/telecom
   - go get github.com/b1naryth1ef/telecom
