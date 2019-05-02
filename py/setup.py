@@ -25,8 +25,9 @@ telecom_go_ext = HybridGoExtension(
         'telecom': 'github.com/b1naryth1ef/telecom/cmd/telecom-native',
     },
     go_links={
-        'github.com/b1naryth1ef/telecom': '..'
+        'github.com/b1naryth1ef/telecom': os.envrion.get('TELECOM_REPO_PATH', '..')
     },
+    shared=bool(os.environ.get('TELECOM_BUILD_SHARED')),
     sources=['telecom.c'],
     libraries=['telecom'],
 )

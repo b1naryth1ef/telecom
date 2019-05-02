@@ -18,16 +18,16 @@ branches:
 
 install:
   - pip install cibuildwheel
-  - mkdir .gopath && export GOPATH=$(pwd)/.gopath/
-  - mkdir -p $GOPATH/src/github.com/b1naryth1ef && ln -s $(pwd) $GOPATH/src/github.com/b1naryth1ef/telecom
-  - go get github.com/b1naryth1ef/telecom
-  - cd py && go build -o telecom.so -buildmode=c-shared github.com/b1naryth1ef/telecom/cmd/telecom-native && mv telecom.so libtelecom.so
+  - mkdir ../workdir
+  - cd ../workdir
+  - mv $TRAVIS_BUILD_DIR/py/* .
+  - mv $TRAVIS_BUILD_DIR repo
 
 before_script: ls
 
 script:
   - |
-    CIBW_ENVIRONMENT="LD_LIBRARY_PATH=\"/host/home/travis/build/b1naryth1ef/telecom/py/:$LD_LIBRARY_PATH\"" \
+    CIBW_ENVIRONMENT="LD_LIBRARY_PATH=\"/host/home/travis/build/b1naryth1ef/telecom/py/:$LD_LIBRARY_PATH\" TELECOM_BUILD_SHARED=1 TELECOM_REPO_PATH=\"./repo/\"" \
     cibuildwheel --output-dir dist .
 
 before_deploy: ls dist/
