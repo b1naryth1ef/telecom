@@ -14,9 +14,9 @@ from pkg_resources import parse_version
 class HybridGoExtension(Extension):
     def __init__(self, name, go_modules, go_links=None, shared=False, **kwargs):
         Extension.__init__(self, name, **kwargs)
-        self._go_modules = go_modules
-        self._go_links = go_links or {}
-        self._shared = shared
+        self.go_modules = go_modules
+        self.go_links = go_links or {}
+        self.shared = shared
         self.skip_go_build = False
 
 
@@ -28,17 +28,19 @@ telecom_go_ext = HybridGoExtension(
     go_links={
         'github.com/b1naryth1ef/telecom': os.environ.get('TELECOM_REPO_PATH', '..')
     },
-    shared=bool(os.environ.get('TELECOM_BUILD_SHARED')),
+    shared=bool(int(os.environ.get('TELECOM_BUILD_SHARED'))),
     sources=['telecom.c'],
     libraries=['telecom'],
 )
 
+# In some situations (build wheels) we may want to build the telecom native libs
+#  ourselves and pass them in to be linked against. To support this we allow
+#  passing an explicit path to the library files (header + .so or .a) via this
+#  env variable, which will entirely disable our Go compilation steps.
 libpath = os.environ.get('TELECOM_LIB_PATH')
 if libpath:
     telecom_go_ext.include_dirs.append(libpath)
     telecom_go_ext.library_dirs.append(libpath)
-
-if os.environ.get('TELECOM_SKIP_GO'):
     telecom_go_ext.skip_go_build = True
 
 
@@ -52,7 +54,6 @@ class CustomBuildExt(build_ext):
 
     def build_go_hybrid(self, ext):
         # We require Go v1.12 or greater, so lets check that here
-        print(' >> checking go version')
         version_output = subprocess.check_output(['go', 'version']).decode('ascii')
         match = re.match(r'go version go([\d\.]+)', version_output)
         if not match:
@@ -65,18 +66,15 @@ class CustomBuildExt(build_ext):
                 '>=1.12'
             ))
 
-        # Make our temporary directory if it doesn't already exist
+        # Setup and stage our build directory
         if not os.path.exists(self.build_temp):
-            print(' >> making build temp')
             os.mkdir(self.build_temp)
 
-        # Create a temp gopath we can use for staging our build
+        # Create a temporary GOPATH for our build process
         temp_gopath = os.path.join(self.build_temp, 'temp_gopath')
         if os.path.exists(temp_gopath):
-            print(' >> deleting temp gopath')
             shutil.rmtree(temp_gopath)
 
-        print(' >> making gopath')
         os.mkdir(temp_gopath)
         os.mkdir(os.path.join(temp_gopath, 'src'))
 
@@ -87,18 +85,17 @@ class CustomBuildExt(build_ext):
         #  does not reflect the latest HEAD of the Go repository, but rather is
         #  linked in from sources our Python package provides. To faciliate this
         #  we link these sources into our gopath now.
-        for url, relative_path in ext._go_links.items():
+        for url, relative_path in ext.go_links.items():
             base, name = os.path.split(url)
             os.makedirs(os.path.join(temp_gopath, 'src', base))
 
-            print(' >> linking path')
             absolute_url_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), relative_path)
             os.symlink(absolute_url_path, os.path.join(temp_gopath, 'src', url))
 
-        lib_file_ext = '.so' if ext._shared else '.a'
-        for name, url in ext._go_modules.items():
+        lib_file_ext = '.so' if ext.shared else '.a'
+        for name, url in ext.go_modules.items():
             print('[go] building {} library {} from module {}'.format(
-                'shared' if ext._shared else 'static',
+                'shared' if ext.shared else 'static',
                 name,
                 url,
             ))
