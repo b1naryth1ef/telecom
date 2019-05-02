@@ -18,16 +18,16 @@ branches:
 
 install:
   - pip install cibuildwheel
-  - mkdir ../workdir
-  - cd ../workdir
-  - mv $TRAVIS_BUILD_DIR/py/* .
-  - mv $TRAVIS_BUILD_DIR repo
+  - mkdir .gopath && export GOPATH=$(pwd)/.gopath/
+  - mkdir -p $GOPATH/src/github.com/b1naryth1ef && ln -s $(pwd) $GOPATH/src/github.com/b1naryth1ef/telecom
+  - go get github.com/b1naryth1ef/telecom
+  - cd py && go build -o telecom.so -buildmode=c-shared github.com/b1naryth1ef/telecom/cmd/telecom-native && mv telecom.so libtelecom.so
 
 before_script: ls
 
 script:
   - |
-    CIBW_ENVIRONMENT="LD_LIBRARY_PATH=\"/host/home/travis/build/b1naryth1ef/telecom/py/:$LD_LIBRARY_PATH\" TELECOM_BUILD_SHARED=1 TELECOM_REPO_PATH=\"./repo/\" PATH=\"$PATH:/usr/local/go/bin\" GOPROXY=\"https://proxy.golang.org\" GO111MODULE=on" \
+    CIBW_ENVIRONMENT="LD_LIBRARY_PATH=\"/host/home/travis/build/b1naryth1ef/telecom/py/:$LD_LIBRARY_PATH\" TELECOM_LIB_PATH=\".\" TELECOM_SKIP_GO=1" \
     CIBW_BEFORE_BUILD="curl https://dl.google.com/go/go1.12.4.linux-amd64.tar.gz -o go.tar.gz && tar -C /usr/local -xzf go.tar.gz && yum install -y gcc" \
     cibuildwheel --output-dir dist .
 

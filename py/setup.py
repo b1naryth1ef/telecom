@@ -17,6 +17,7 @@ class HybridGoExtension(Extension):
         self._go_modules = go_modules
         self._go_links = go_links or {}
         self._shared = shared
+        self.skip_go_build = False
 
 
 telecom_go_ext = HybridGoExtension(
@@ -32,11 +33,19 @@ telecom_go_ext = HybridGoExtension(
     libraries=['telecom'],
 )
 
+libpath = os.environ.get('TELECOM_LIB_PATH')
+if libpath:
+    telecom_go_ext.include_dirs.append(libpath)
+    telecom_go_ext.library_dirs.append(libpath)
+
+if os.environ.get('TELECOM_SKIP_GO'):
+    telecom_go_ext.skip_go_build = True
+
 
 class CustomBuildExt(build_ext):
     def run(self):
         for ext in self.extensions:
-            if isinstance(ext, HybridGoExtension):
+            if isinstance(ext, HybridGoExtension) and not ext.skip_go_build:
                 self.build_go_hybrid(ext)
 
         build_ext.run(self)
