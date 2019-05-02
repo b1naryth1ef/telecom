@@ -43,6 +43,7 @@ class CustomBuildExt(build_ext):
 
     def build_go_hybrid(self, ext):
         # We require Go v1.12 or greater, so lets check that here
+        print(' >> checking go version')
         version_output = subprocess.check_output(['go', 'version']).decode('ascii')
         match = re.match(r'go version go([\d\.]+)', version_output)
         if not match:
@@ -57,13 +58,16 @@ class CustomBuildExt(build_ext):
 
         # Make our temporary directory if it doesn't already exist
         if not os.path.exists(self.build_temp):
+            print(' >> making build temp')
             os.mkdir(self.build_temp)
 
         # Create a temp gopath we can use for staging our build
         temp_gopath = os.path.join(self.build_temp, 'temp_gopath')
         if os.path.exists(temp_gopath):
+            print(' >> deleting temp gopath')
             shutil.rmtree(temp_gopath)
 
+        print(' >> making gopath')
         os.mkdir(temp_gopath)
         os.mkdir(os.path.join(temp_gopath, 'src'))
 
@@ -78,6 +82,7 @@ class CustomBuildExt(build_ext):
             base, name = os.path.split(url)
             os.makedirs(os.path.join(temp_gopath, 'src', base))
 
+            print(' >> linking path')
             absolute_url_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), relative_path)
             os.symlink(absolute_url_path, os.path.join(temp_gopath, 'src', url))
 
