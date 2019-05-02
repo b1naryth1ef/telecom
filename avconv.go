@@ -4,10 +4,10 @@ import (
 	"bufio"
 	"encoding/binary"
 	"io"
-	"layeh.com/gopus"
 	"os/exec"
 	"strconv"
 
+	"github.com/b1naryth1ef/gopus"
 	log "github.com/sirupsen/logrus"
 )
 
