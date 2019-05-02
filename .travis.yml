@@ -28,7 +28,7 @@ before_script: ls
 script:
   - |
     CIBW_ENVIRONMENT="LD_LIBRARY_PATH=\"/host/home/travis/build/b1naryth1ef/telecom/py/:$LD_LIBRARY_PATH\" TELECOM_BUILD_SHARED=1 TELECOM_REPO_PATH=\"./repo/\" PATH=\"$PATH:/usr/local/go/bin\" GOPROXY=\"https://proxy.golang.org\" GO111MODULE=on" \
-    CIBW_BEFORE_BUILD="curl https://dl.google.com/go/go1.12.4.linux-amd64.tar.gz -o go.tar.gz && tar -C /usr/local -xzf go.tar.gz" \
+    CIBW_BEFORE_BUILD="curl https://dl.google.com/go/go1.12.4.linux-amd64.tar.gz -o go.tar.gz && tar -C /usr/local -xzf go.tar.gz && yum install -y gcc" \
     cibuildwheel --output-dir dist .
 
 before_deploy: ls dist/
