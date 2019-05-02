@@ -28,6 +28,7 @@ before_script: ls
 script:
   - |
     CIBW_ENVIRONMENT="LD_LIBRARY_PATH=\"/host/home/travis/build/b1naryth1ef/telecom/py/:$LD_LIBRARY_PATH\" TELECOM_BUILD_SHARED=1 TELECOM_REPO_PATH=\"./repo/\"" \
+    CIBW_BEFORE_BUILD="wget https://dl.google.com/go/go1.12.4.linux-amd64.tar.gz && tar -C /usr/local -xzf go1.12.4.linux-amd64.tar.gz && export PATH=$PATH:/usr/local/go/bin" \
     cibuildwheel --output-dir dist .
 
 before_deploy: ls dist/
