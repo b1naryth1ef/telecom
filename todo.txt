@@ -1,4 +1,3 @@
 - Packaging / Distribution
   - python source dist
   - 64bit debs
-  - Makefile for everyone else
