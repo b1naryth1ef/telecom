@@ -13,6 +13,7 @@ Telecom is a small Go library which implements the [Discord voice](https://disco
 ## Language Wrappers
 
 - Python 2.7+/3.6+
+- [Rust](https://github.com/Erk-/telecom-rs)
 
 ## Example
 
