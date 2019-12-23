@@ -22,17 +22,17 @@ type GatewayMessage struct {
 }
 
 type GatewayMessageReady struct {
-	SSRC              uint32        `json:"ssrc"`
-	IP                string        `json:"ip"`
-	Port              int           `json:"port"`
-	Modes             []string      `json:"modes"`
+	SSRC  uint32   `json:"ssrc"`
+	IP    string   `json:"ip"`
+	Port  int      `json:"port"`
+	Modes []string `json:"modes"`
 
 	// This heartbeat interval should not be used.
 	HeartbeatInterval time.Duration `json:"heartbeat_interval"`
 }
 
 type GatewayMessageHello struct {
-    HeartbeatInterval float32 `json:"heartbeat_interval"`
+	HeartbeatInterval float32 `json:"heartbeat_interval"`
 }
 
 type GatewayMessageSpeaking struct {
