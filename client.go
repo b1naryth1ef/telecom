@@ -81,7 +81,6 @@ type Client struct {
 	playableQueue chan Playable
 	playable      Playable
 	closer        chan struct{}
-	endpoint      string
 	sessionId     string
 	secretKey     [32]byte
 
