@@ -26,9 +26,6 @@ type GatewayMessageReady struct {
 	IP    string   `json:"ip"`
 	Port  int      `json:"port"`
 	Modes []string `json:"modes"`
-
-	// This heartbeat interval should not be used.
-	HeartbeatInterval time.Duration `json:"heartbeat_interval"`
 }
 
 type GatewayMessageHello struct {
