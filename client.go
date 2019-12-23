@@ -23,9 +23,16 @@ type GatewayMessage struct {
 
 type GatewayMessageReady struct {
 	SSRC              uint32        `json:"ssrc"`
+	IP                string        `json:"ip"`
 	Port              int           `json:"port"`
 	Modes             []string      `json:"modes"`
+
+	// This heartbeat interval should not be used.
 	HeartbeatInterval time.Duration `json:"heartbeat_interval"`
+}
+
+type GatewayMessageHello struct {
+    HeartbeatInterval float32 `json:"heartbeat_interval"`
 }
 
 type GatewayMessageSpeaking struct {
@@ -148,7 +155,6 @@ func (c *Client) runForever() {
 	for {
 		select {
 		case info = <-c.serverInfoChan:
-			c.endpoint = info.Endpoint
 			if c.ws != nil {
 				log.Debug("Tearing down existing connection, endpoint has moved")
 				c.ws.Close()
@@ -162,7 +168,8 @@ func (c *Client) runForever() {
 		}
 
 		var err error
-		c.ws, _, err = websocket.DefaultDialer.Dial("wss://"+strings.TrimSuffix(info.Endpoint, ":80"), nil)
+		host := "wss://" + strings.TrimSuffix(info.Endpoint, ":80") + ":443/?v=4"
+		c.ws, _, err = websocket.DefaultDialer.Dial(host, nil)
 		if err != nil {
 			panic(err)
 		}
@@ -209,8 +216,7 @@ func (c *Client) runWebsocket() {
 				continue
 			}
 
-			go c.runHeartbeater(wsCloser, ready.HeartbeatInterval)
-			go c.runUDP(wsCloser, ready.Port, ready.SSRC)
+			go c.runUDP(wsCloser, ready.IP, ready.Port, ready.SSRC)
 		case 3:
 		case 4:
 			var mode GatewayMessageMode
@@ -221,6 +227,17 @@ func (c *Client) runWebsocket() {
 			}
 
 			c.secretKey = mode.SecretKey
+		case 6:
+			log.Debug("Heartbeat acknowledged")
+		case 8:
+			var hello GatewayMessageHello
+			err = json.Unmarshal(message.Data, &hello)
+			if err != nil {
+				log.WithError(err).Errorf("Failed to process Hello message: %v", string(message.Data))
+				continue
+			}
+
+			go c.runHeartbeater(wsCloser, hello.HeartbeatInterval)
 		default:
 			log.WithFields(log.Fields{
 				"op":   message.Op,
@@ -230,7 +247,7 @@ func (c *Client) runWebsocket() {
 	}
 }
 
-func (c *Client) runHeartbeater(closer chan struct{}, interval time.Duration) {
+func (c *Client) runHeartbeater(closer chan struct{}, interval float32) {
 	var err error
 
 	ticker := time.NewTicker(time.Duration(interval) * time.Millisecond)
@@ -253,13 +270,13 @@ func (c *Client) runHeartbeater(closer chan struct{}, interval time.Duration) {
 	}
 }
 
-func (c *Client) runUDP(closer chan struct{}, port int, ssrc uint32) {
+func (c *Client) runUDP(closer chan struct{}, connection_ip string, port int, ssrc uint32) {
 	if c.udp != nil {
 		log.Printf("Error: UDP connection already open?")
 		return
 	}
 
-	host := strings.TrimSuffix(c.endpoint, ":80") + ":" + strconv.Itoa(port)
+	host := connection_ip + ":" + strconv.Itoa(port)
 	addr, err := net.ResolveUDPAddr("udp", host)
 	if err != nil {
 		log.Printf("Error: failed to resolve UDP addr %v: %v", host, err)
