@@ -164,7 +164,7 @@ func (c *Client) runForever() {
 		}
 
 		var err error
-		host := "wss://" + strings.TrimSuffix(info.Endpoint, ":80") + ":443/?v=4"
+		host := "wss://" + strings.TrimSuffix(info.Endpoint, ":80") + "/?v=4"
 		c.ws, _, err = websocket.DefaultDialer.Dial(host, nil)
 		if err != nil {
 			panic(err)
@@ -266,13 +266,13 @@ func (c *Client) runHeartbeater(closer chan struct{}, interval float32) {
 	}
 }
 
-func (c *Client) runUDP(closer chan struct{}, connection_ip string, port int, ssrc uint32) {
+func (c *Client) runUDP(closer chan struct{}, connectionIP string, port int, ssrc uint32) {
 	if c.udp != nil {
 		log.Printf("Error: UDP connection already open?")
 		return
 	}
 
-	host := connection_ip + ":" + strconv.Itoa(port)
+	host := connectionIP + ":" + strconv.Itoa(port)
 	addr, err := net.ResolveUDPAddr("udp", host)
 	if err != nil {
 		log.Printf("Error: failed to resolve UDP addr %v: %v", host, err)
