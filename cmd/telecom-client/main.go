@@ -28,7 +28,7 @@ func main() {
 	client.Run()
 
 	if endpoint != nil && token != nil {
-		client.SetServerInfo(*endpoint, *token)
+		client.UpdateServerInfo(*endpoint, *token)
 	}
 
 	<-client.Ready
