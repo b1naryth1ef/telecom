@@ -12,6 +12,9 @@ matrix:
         - CIBW_BUILD="cp27-manylinux1_x86_64 cp36-manylinux1_x86_64 cp37-manylinux1_x86_64"
 
 install:
+  - wget https://dl.google.com/go/go1.13.5.linux-amd64.tar.gz
+  - tar -C /usr/local -xzf go1.13.5.linux-amd64.tar.gz
+  - export PATH=$PATH:/usr/local/go/bin
   - go version
   - pip install cibuildwheel twine
   - mkdir .gopath && export GOPATH=$(pwd)/.gopath/
