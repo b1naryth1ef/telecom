@@ -14,12 +14,12 @@ matrix:
 install:
   - wget https://dl.google.com/go/go1.13.5.linux-amd64.tar.gz
   - sudo tar -C /usr/local -xzf go1.13.5.linux-amd64.tar.gz
-  - PATH=$PATH:/usr/local/go/bin go version
+  - PATH=/usr/local/go/bin:$PATH go version
   - pip install cibuildwheel twine
   - mkdir .gopath && export GOPATH=$(pwd)/.gopath/
   - mkdir -p $GOPATH/src/github.com/b1naryth1ef && ln -s $(pwd) $GOPATH/src/github.com/b1naryth1ef/telecom
-  - PATH=$PATH:/usr/local/go/bin go get github.com/b1naryth1ef/telecom
-  - PATH=$PATH:/usr/local/go/bin cd py && go build -o telecom.so -buildmode=c-shared github.com/b1naryth1ef/telecom/cmd/telecom-native && mv telecom.so libtelecom.so
+  - PATH=/usr/local/go/bin:$PATH go get github.com/b1naryth1ef/telecom
+  - PATH=/usr/local/go/bin:$PATH cd py && go build -o telecom.so -buildmode=c-shared github.com/b1naryth1ef/telecom/cmd/telecom-native && mv telecom.so libtelecom.so
 
 before_script: ls
 
