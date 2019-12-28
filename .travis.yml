@@ -1,6 +1,6 @@
 sudo: false
 language: python
-dist: trusty
+dist: bionic
 
 matrix:
   include:
@@ -12,6 +12,7 @@ matrix:
         - CIBW_BUILD="cp27-manylinux1_x86_64 cp36-manylinux1_x86_64 cp37-manylinux1_x86_64"
 
 install:
+  - go version
   - pip install cibuildwheel twine
   - mkdir .gopath && export GOPATH=$(pwd)/.gopath/
   - mkdir -p $GOPATH/src/github.com/b1naryth1ef && ln -s $(pwd) $GOPATH/src/github.com/b1naryth1ef/telecom
